@@ -31,3 +31,6 @@ redis_data/
 
 # Tooling (local session state, not part of the app)
 .claude/
+
+# Original PRD reference screenshots (not part of the codebase)
+WhatsApp Image*.jpeg
