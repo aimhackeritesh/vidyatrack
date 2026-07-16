@@ -1,0 +1,78 @@
+name: vidyatrack
+description: VidyaTrack — School Management App for Indian Schools
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
+  # Networking
+  dio: ^5.4.3+1
+  retrofit: ^4.1.0
+
+  # Local storage / offline
+  sqflite: ^2.3.3
+  path: ^1.9.0
+  shared_preferences: ^2.2.3
+
+  # UI
+  cached_network_image: ^3.3.1
+  fl_chart: ^0.67.0
+  shimmer: ^3.0.0
+  lottie: ^3.1.0
+  flutter_svg: ^2.0.10+1
+  image_picker: ^1.1.1
+  file_picker: ^8.0.3
+
+  # Navigation
+  go_router: ^13.2.0
+
+  # Firebase
+  firebase_core: ^3.0.0
+  firebase_messaging: ^15.0.0
+
+  # Utils
+  intl: ^0.19.0
+  uuid: ^4.4.0
+  connectivity_plus: ^6.0.3
+  permission_handler: ^11.3.1
+  url_launcher: ^6.3.0
+  share_plus: ^9.0.0
+  flutter_local_notifications: ^17.2.1+2
+  package_info_plus: ^8.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  build_runner: ^2.4.9
+  riverpod_generator: ^2.3.11
+  retrofit_generator: ^8.1.0
+  json_serializable: ^6.8.0
+  json_annotation: ^4.9.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/animations/
+
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+        - asset: assets/fonts/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700
