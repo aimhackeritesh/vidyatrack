@@ -1,0 +1,94 @@
+version: '3.9'
+
+services:
+  # ── PostgreSQL ─────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: vidyatrack-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vidyatrack
+      POSTGRES_PASSWORD: vidyatrack
+      POSTGRES_DB: vidyatrack
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./apps/api/src/database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./apps/api/src/database/rls-setup.sql:/docker-entrypoint-initdb.d/02_rls-setup.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vidyatrack"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ──────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: vidyatrack-redis
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── NestJS API ─────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: vidyatrack-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://vidyatrack_app:vidyatrack_app@postgres:5432/vidyatrack
+      DATABASE_ADMIN_URL: postgresql://vidyatrack:vidyatrack@postgres:5432/vidyatrack
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_change_in_production_min32}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev_refresh_change_in_production_32}
+      JWT_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 30d
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3000
+      MSG91_AUTH_KEY: ${MSG91_AUTH_KEY:-}
+      MSG91_TEMPLATE_ID: ${MSG91_TEMPLATE_ID:-}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      FIREBASE_CLIENT_EMAIL: ${FIREBASE_CLIENT_EMAIL:-}
+      FIREBASE_PRIVATE_KEY: ${FIREBASE_PRIVATE_KEY:-}
+      S3_BUCKET: ${S3_BUCKET:-vidyatrack}
+      S3_REGION: ${S3_REGION:-ap-south-1}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./apps/api/src:/app/src:ro   # hot-reload in dev
+
+  # ── Next.js admin (web) ────────────────────────────────────────────────────
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: vidyatrack-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      NEXT_PUBLIC_API_URL: http://api:3000/api/v1
+    ports:
+      - "3001:3000"
+
+volumes:
+  postgres_data:
+  redis_data:
