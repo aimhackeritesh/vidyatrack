@@ -56,9 +56,8 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
       final orderRes = await dio.post('/fees/pay/order', data: {'invoiceId': widget.invoiceId});
       final order = orderRes.data as Map<String, dynamic>;
 
-      // Mock gateway (PAYMENT_MODE=mock, the default): simulate the checkout
-      // round-trip instead of opening a real Razorpay sheet, so the full
-      // parent-pays flow is demoable without live merchant keys.
+      // Simulate the checkout round-trip so the full parent-pays flow is
+      // demoable without a real merchant account.
       await Future.delayed(const Duration(milliseconds: 1200));
       final mockPaymentId = 'mock_pay_${const Uuid().v4()}';
 

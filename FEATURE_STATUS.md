@@ -10,7 +10,7 @@
 | Item | Status | Notes |
 |---|---|---|
 | **Shared: file upload** | ✅ | `POST /uploads` (local disk, S3-adapter-ready `StorageService`), 15MB/MIME-limited; served at `/uploads/*` |
-| **Shared: payment gateway** | ✅ | `PaymentGateway` interface — `MockGateway` (default, `PAYMENT_MODE=mock`) + `RazorpayGateway` (real HMAC, `PAYMENT_MODE=razorpay`) |
+| **Shared: payment gateway** | ✅ | `PaymentGateway` interface — `MockGateway` only (no merchant account available yet); a real provider plugs into the same interface later without touching callers |
 | **Timetable — admin sets, all roles view** | ✅ | `POST/GET/DELETE /academics/timetable*`; `EditTimetableScreen` (admin), `TimetableViewScreen` (parent/student/teacher); wired to parent/student home tiles + Academics grid "Class Routine" |
 | **Syllabus — admin/teacher set, all roles view** | ✅ | `POST/GET/DELETE /academics/syllabus*`; `SyllabusScreen` (view+edit, topic checklist + file); wired to parent/student home + Academics grid |
 | **Study Material — upload + browse** | ✅ | Upload now accepts a real `fileUrl` from `/uploads`; `/academics/materials/my` for parent/student; `StudyMaterialScreen`; wired to parent/student/teacher |

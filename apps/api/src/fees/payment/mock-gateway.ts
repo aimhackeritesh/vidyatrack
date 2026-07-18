@@ -3,12 +3,12 @@ import { v4 as uuidv4 } from 'uuid';
 import { CreateOrderParams, GatewayOrder, PaymentGateway, VerifyPaymentParams } from './payment-gateway.interface';
 
 /**
- * Demo/dev default (PAYMENT_MODE=mock, no live merchant keys needed). Simulates
- * a real gateway's shape (orderId → client "pays" → verify) so the full parent
- * pay-fees flow is demoable end-to-end. It is intentionally NOT cryptographically
- * verified — any non-empty paymentId against a mock order is accepted. Swap to
- * RazorpayGateway (real HMAC signature verification) via PAYMENT_MODE=razorpay
- * once merchant test/live keys exist; nothing above this class needs to change.
+ * Simulates a real gateway's shape (orderId → client "pays" → verify) so the
+ * full parent pay-fees flow is demoable end-to-end without a merchant account.
+ * It is intentionally NOT cryptographically verified — any non-empty paymentId
+ * against a mock order is accepted. The `PaymentGateway` interface it
+ * implements is the seam for wiring a real provider in later; no other code
+ * needs to change to add one.
  */
 @Injectable()
 export class MockGateway implements PaymentGateway {

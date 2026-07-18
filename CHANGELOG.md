@@ -2,6 +2,10 @@
 
 All notable changes to VidyaTrack. Format loosely follows Keep a Changelog.
 
+## [Unreleased] — Removed the Razorpay integration (2026-07-18)
+
+No merchant account available yet, so the real-gateway code path was unused and untestable. Removed `RazorpayGateway`, the `razorpay` npm dependency, and the `PAYMENT_MODE` env-var branching in `PaymentModule` (now always resolves to `MockGateway`). The `PaymentGateway` interface is unchanged — a real provider still plugs in later without touching `FeesService` or any controller. Mock-mode online payment (order → verify → receipt) is unaffected and re-verified live after the change. Cleaned up leftover `RAZORPAY_*`/`PAYMENT_MODE` entries from `.env`.
+
 ## [Unreleased] — V3: Timetable, Syllabus, Study Material, Fees, Super-Admin (2026-07-16)
 
 Every button now works for parents and admins across timetable, syllabus, study material, and fees — including admin-set fee structure, invoice generation, and parent-facing online payment. All changes verified live against Postgres; `flutter analyze` 0 errors/warnings; `next build` clean; RLS isolation 5/5.
