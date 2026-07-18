@@ -2,6 +2,32 @@
 
 All notable changes to VidyaTrack. Format loosely follows Keep a Changelog.
 
+## [v1.0.0-deploy] — First live deployment (2026-07-18)
+
+Full plan in `DEPLOYMENT-PLAN-V1.md`. The API, super-admin web console, Postgres, and Redis are now live on the public internet; the Android app is a downloadable GitHub Release built against the deployed API.
+
+**Live:** API https://api-production-28467.up.railway.app · web https://vidyatrack-web.vercel.app · APK [v1.0.0-deploy release](https://github.com/aimhackeritesh/vidyatrack/releases/tag/v1.0.0-deploy)
+
+### Added
+- `GET /api/v1/health` (DB ping) for platform health checks.
+- `apps/api/scripts/apply-db.js` (idempotent schema+RLS apply against any managed Postgres) and `scripts/bootstrap-prod.js` (creates only the founder super-admin — no demo data), both plain node+pg so they run without the full Nest build.
+- `railway.json` (build/healthcheck config), `.dockerignore`, `apps/web/next.config.js` (`output: 'standalone'`), `.env.production.example`.
+- Mobile: password-only login screen (School Code + phone-or-login-ID + password), replacing the OTP flow that has no SMS provider in this deployment. Default `API_URL` now points at the deployed API.
+- README "🚀 Live demo" section with URLs and credentials.
+
+### Fixed (found by actually deploying, not local testing)
+- **Both Dockerfiles were broken.** API `CMD` pointed at `dist/main` — the real compiled entry is `dist/src/main.js`. Both API and web Dockerfiles ran `npm ci` inside `apps/api`/`apps/web`, which have no lockfile (workspaces hoist it to the repo root) — `npm ci` hard-fails without one. Reworked both to build from the repo root.
+- Web Dockerfile expected `.next/standalone`, which Next never emitted without `output: 'standalone'` in `next.config.js` (the file didn't exist).
+- `apply-db.js`: `schema.sql` GRANTs privileges to `vidyatrack_app` before `rls-setup.sql` creates that role. Worked locally only because the role already existed from a prior run — failed outright on a truly fresh Railway Postgres ("role vidyatrack_app does not exist"). Now creates the role first.
+- Swagger was reachable in prod by default; gated behind `NODE_ENV !== 'production'`.
+- The `vidyatrack_app` DB password defaulted to a value committed in `rls-setup.sql` (fine for local dev, not for a public database) — rotated to a strong random value for the deployed instance.
+
+### Verified live (against the actual deployed infra, not local)
+- RLS deny-by-default holds on the Railway Postgres: connecting as `vidyatrack_app` with no tenant context returns 0 rows.
+- Cross-origin login from the Vercel web console to the Railway API returns 201 with the correct `Access-Control-Allow-Origin`; an untrusted origin does not get its own origin reflected back (browser blocks it).
+- Full round trip on a real Android emulator: uninstalled the old local-URL build, installed the release APK built against the live API, filled the new password-login form via `adb input`, logged in as the demo parent, and the Parent Dashboard rendered live from Railway — every V3 tile present, zero local services running.
+- Swagger off, `/.env` unreachable, fresh JWT secrets, prod DB has exactly the demo school (240 students) + one super-admin, no leftover local-only state.
+
 ## [Unreleased] — Removed the Razorpay integration (2026-07-18)
 
 No merchant account available yet, so the real-gateway code path was unused and untestable. Removed `RazorpayGateway`, the `razorpay` npm dependency, and the `PAYMENT_MODE` env-var branching in `PaymentModule` (now always resolves to `MockGateway`). The `PaymentGateway` interface is unchanged — a real provider still plugs in later without touching `FeesService` or any controller. Mock-mode online payment (order → verify → receipt) is unaffected and re-verified live after the change. Cleaned up leftover `RAZORPAY_*`/`PAYMENT_MODE` entries from `.env`.

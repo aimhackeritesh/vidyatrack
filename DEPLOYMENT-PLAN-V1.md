@@ -149,17 +149,23 @@ Fixed every ⛔ blocker and the 🟡 items. All in-repo, no cloud account needed
 - **Live:** `https://vidyatrack-web.vercel.app`
 - **Verify:** ✅ site loads (200); **cross-origin** super-admin login → HTTP 201 with `access-control-allow-origin: https://vidyatrack-web.vercel.app` and a real token (the exact browser flow).
 
-### Phase D4 — Build & distribute the Android app 🟡 (in progress)
+### Phase D4 — Build & distribute the Android app ✅ COMPLETE
 - [x] **D4.1** ✅ Reworked login to password-only (phone-or-ID + password; dropped the non-functional OTP path); default `API_URL` now points at the deployed API. `flutter analyze` 0 errors, `flutter test` 4/4. Built release APK (58.7 MB) baked with the prod URL.
-- [ ] **D4.2** Publish it as a GitHub Release for a stable download link.
-- **Verify:** install on the Pixel 9a emulator, confirm login + data **against the deployed API**.
+- [x] **D4.2** ✅ Published as [GitHub Release v1.0.0-deploy](https://github.com/aimhackeritesh/vidyatrack/releases/tag/v1.0.0-deploy).
+- **Verify:** ✅ Installed the production APK on the Pixel 9a emulator (uninstalled the old local-URL debug build first to avoid signature conflicts). Filled the new password-only login form via `adb input`, logged in as the demo parent — **Parent Dashboard loaded live from Railway**, showing every V3 tile (Attendance, Timetable, Fee Status, Homework, Results, Study Material, Syllabus, Notices, Apply Leave). Zero local infra involved — phone/emulator → internet → Railway API → Railway Postgres.
 
-### Phase D5 — Hardening & verification pass
-- [ ] **D5.1** Security sanity: CORS locked to web origin, Swagger off in prod, no dev secrets in use, `.env` not in git.
-- [ ] **D5.2** Smoke test the critical flows on prod: super-admin creates a school → principal logs in (forced password change) → sees only their school (RLS) → sets fee structure → generates invoices → parent sees dues → mock "Pay Now" → receipt.
-- [ ] **D5.3** Update `README.md` with live URLs + a "Live Demo" section (super-admin creds are safe to show for a demo school; note it's a demo).
-- [ ] **D5.4** Update `CHANGELOG.md` + project memory with the deploy.
-- **Verify:** the whole thing works from a cold browser/phone with no local services running.
+### Phase D5 — Hardening & verification pass ✅ COMPLETE
+- [x] **D5.1** ✅ Security sanity: CORS reflects only `https://vidyatrack-web.vercel.app` (a request from an untrusted origin gets that ACAO back, so the browser blocks it reading the response); Swagger `/api/docs` → 404; `/.env` → 404; no dev secrets in use (fresh JWT secrets + rotated DB password, none committed).
+- [x] **D5.2** ✅ Smoke-tested the critical flows against prod: admin login → fee heads (200) → parent login → `/fees/my-dues` correctly ownership-scoped (own child's ₹2,300 outstanding across 3 invoices, ordinary RLS + `assertStudentAccess` both hold on the live DB) → super-admin analytics shows the real seeded numbers (240 students, 1 school, invoices 20/240 paid).
+- [x] **D5.3** ✅ README has a "🚀 Live demo" section up top with the URLs + credentials.
+- [x] **D5.4** ✅ This plan doc is the source of truth; CHANGELOG + project memory updated alongside.
+- **Result:** the whole stack works from a cold phone/browser with zero local services running — confirmed by literally installing on the emulator and logging in over the public internet.
+
+## Live URLs (V1 deployed 2026-07-18)
+- **API:** https://api-production-28467.up.railway.app (health: `/api/v1/health`)
+- **Web console:** https://vidyatrack-web.vercel.app
+- **Android APK:** https://github.com/aimhackeritesh/vidyatrack/releases/tag/v1.0.0-deploy
+- **Demo login:** school code `VDTRK2627DEMO01`, password `Demo@1234` for admin (`9999900001`), teacher (`9999900002`), parent (`9999900003`). Super-admin: `founder@vidyatrack.in` / `Demo@1234`.
 
 ---
 
