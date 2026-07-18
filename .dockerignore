@@ -1,0 +1,31 @@
+# Build context is the repo root (for the workspace lockfile), so keep it lean.
+**/node_modules
+**/dist
+**/.next
+**/build
+**/coverage
+
+# Mobile app — not part of any server image (and its build/ dir is huge)
+apps/mobile
+
+# Local env + secrets
+**/.env
+**/.env.*
+!**/.env.example
+
+# Local file uploads (ephemeral, not baked into the image)
+apps/api/uploads
+
+# VCS / tooling / editor
+.git
+.github
+.claude
+**/*.log
+.DS_Store
+
+# Reference material, not code
+*.jpeg
+*.jpg
+*.png
+!apps/web/**/*.png
+!apps/mobile/**/*.png

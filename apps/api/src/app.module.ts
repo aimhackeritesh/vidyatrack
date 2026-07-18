@@ -17,6 +17,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { AcademicsModule } from './academics/academics.module';
 import { SuperAdminModule } from './superadmin/superadmin.module';
 import { StorageModule } from './common/storage/storage.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { StorageModule } from './common/storage/storage.module';
     AcademicsModule,
     SuperAdminModule,
     StorageModule,
+    HealthModule,
   ],
 })
 export class AppModule {}

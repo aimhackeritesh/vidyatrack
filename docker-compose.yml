@@ -39,10 +39,11 @@ services:
       retries: 3
 
   # ── NestJS API ─────────────────────────────────────────────────────────────
+  # Built from the repo root so the npm-workspace lockfile is in build context.
   api:
     build:
-      context: ./apps/api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/api/Dockerfile
     container_name: vidyatrack-api
     restart: unless-stopped
     depends_on:
@@ -60,6 +61,7 @@ services:
       JWT_REFRESH_EXPIRES_IN: 30d
       NODE_ENV: ${NODE_ENV:-development}
       PORT: 3000
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
       MSG91_AUTH_KEY: ${MSG91_AUTH_KEY:-}
       MSG91_TEMPLATE_ID: ${MSG91_TEMPLATE_ID:-}
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
@@ -72,20 +74,19 @@ services:
       S3_ENDPOINT: ${S3_ENDPOINT:-}
     ports:
       - "3000:3000"
-    volumes:
-      - ./apps/api/src:/app/src:ro   # hot-reload in dev
 
   # ── Next.js admin (web) ────────────────────────────────────────────────────
+  # Also built from the repo root (same workspace-lockfile reason).
   web:
     build:
-      context: ./apps/web
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3000/api/v1
     container_name: vidyatrack-web
     restart: unless-stopped
     depends_on:
       - api
-    environment:
-      NEXT_PUBLIC_API_URL: http://api:3000/api/v1
     ports:
       - "3001:3000"
 

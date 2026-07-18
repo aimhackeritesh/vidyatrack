@@ -4,8 +4,10 @@
   "private": true,
   "scripts": {
     "build": "nest build",
-    "start": "node dist/main",
+    "start": "node dist/src/main.js",
     "start:dev": "nest start --watch",
+    "db:apply": "node scripts/apply-db.js",
+    "bootstrap:prod": "node scripts/bootstrap-prod.js",
     "start:debug": "nest start --debug --watch",
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "test": "jest --passWithNoTests",
