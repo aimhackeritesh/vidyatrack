@@ -38,6 +38,20 @@ async function main() {
   const client = new Client({ connectionString: url, ssl: sslFor(url) });
   await client.connect();
   try {
+    // The app role must exist BEFORE schema.sql, because schema.sql GRANTs
+    // privileges to it. rls-setup.sql (run last) then does the full grants +
+    // policies. On a fresh DB this ordering matters; it's idempotent otherwise.
+    process.stdout.write('Ensuring vidyatrack_app role … ');
+    await client.query(`
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'vidyatrack_app') THEN
+          CREATE ROLE vidyatrack_app LOGIN PASSWORD 'vidyatrack_app'
+            NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
+        END IF;
+      END $$;
+    `);
+    console.log('✓');
+
     for (const file of files) {
       const sql = fs.readFileSync(path.join(dir, file), 'utf8');
       process.stdout.write(`Applying ${file} … `);
