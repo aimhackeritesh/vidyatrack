@@ -15,6 +15,8 @@ class AppTextField extends StatelessWidget {
   final bool readOnly;
   final VoidCallback? onTap;
   final List<TextInputFormatter>? inputFormatters;
+  final IconData? suffixIcon;
+  final VoidCallback? onSuffixTap;
 
   const AppTextField({
     super.key,
@@ -31,6 +33,8 @@ class AppTextField extends StatelessWidget {
     this.readOnly = false,
     this.onTap,
     this.inputFormatters,
+    this.suffixIcon,
+    this.onSuffixTap,
   });
 
   @override
@@ -55,6 +59,9 @@ class AppTextField extends StatelessWidget {
             hintText: hint,
             counterText: '',
             prefixIcon: prefixIcon != null ? Icon(prefixIcon, size: 20, color: const Color(0xFF9E9E9E)) : null,
+            suffixIcon: suffixIcon != null
+                ? IconButton(icon: Icon(suffixIcon, size: 20, color: const Color(0xFF9E9E9E)), onPressed: onSuffixTap)
+                : null,
           ),
         ),
       ],

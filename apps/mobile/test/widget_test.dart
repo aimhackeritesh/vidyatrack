@@ -31,12 +31,13 @@ void main() {
     expect(find.byIcon(Icons.construction_rounded), findsOneWidget);
   });
 
-  testWidgets('LoginScreen renders both login paths', (tester) async {
+  testWidgets('LoginScreen renders the password login fields', (tester) async {
     await tester.pumpWidget(const ProviderScope(
       child: MaterialApp(home: LoginScreen()),
     ));
-    expect(find.text('Send OTP'), findsOneWidget);
-    expect(find.text('Login with ID & Password'), findsOneWidget);
     expect(find.text('School Code'), findsOneWidget);
+    expect(find.text('Phone or Login ID'), findsOneWidget);
+    expect(find.text('Password'), findsOneWidget);
+    expect(find.text('Login'), findsOneWidget);
   });
 }

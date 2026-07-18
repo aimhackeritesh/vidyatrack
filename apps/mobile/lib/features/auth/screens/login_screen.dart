@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/loading_button.dart';
 
+/// Password login: School Code + (phone or login-ID) + password.
+/// OTP/SMS is not wired in V1, so this is the single login path.
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -17,30 +18,40 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _codeCtrl = TextEditingController();
-  final _phoneCtrl = TextEditingController();
+  final _idCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
   bool _loading = false;
+  bool _obscure = true;
 
   @override
   void dispose() {
     _codeCtrl.dispose();
-    _phoneCtrl.dispose();
+    _idCtrl.dispose();
+    _passCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _sendOtp() async {
+  Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
-    final error = await ref.read(authProvider.notifier).sendOtp(
-      schoolCode: _codeCtrl.text.trim().toUpperCase(),
-      phone: _phoneCtrl.text.trim(),
-    );
+
+    // A 10-digit number is a phone; anything else (e.g. STU-2026001) is a login ID.
+    final id = _idCtrl.text.trim();
+    final isPhone = RegExp(r'^\d{10}$').hasMatch(id);
+
+    final result = await ref.read(authProvider.notifier).loginPassword(
+          schoolCode: _codeCtrl.text.trim().toUpperCase(),
+          phone: isPhone ? id : null,
+          loginId: isPhone ? null : id.toUpperCase(),
+          password: _passCtrl.text,
+        );
     setState(() => _loading = false);
     if (!mounted) return;
-    if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error), backgroundColor: AppColors.error));
+    if (result['error'] != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['error'].toString()), backgroundColor: AppColors.error));
       return;
     }
-    context.push('/otp', extra: {'schoolCode': _codeCtrl.text.trim().toUpperCase(), 'phone': _phoneCtrl.text.trim()});
+    navigateAfterAuth(context, result);
   }
 
   @override
@@ -76,7 +87,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 48),
                 const Text('Welcome Back', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 4),
-                const Text('Login with your school code & mobile', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                const Text('Log in with your school code & password', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                 const SizedBox(height: 32),
                 AppTextField(
                   controller: _codeCtrl,
@@ -88,82 +99,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 16),
                 AppTextField(
-                  controller: _phoneCtrl,
-                  label: 'Mobile Number',
-                  hint: '10-digit mobile number',
-                  prefixIcon: Icons.phone_android_rounded,
-                  keyboardType: TextInputType.phone,
-                  maxLength: 10,
-                  validator: (v) {
-                    if (v == null || v.isEmpty) return 'Enter mobile number';
-                    if (v.length != 10) return 'Enter 10-digit number';
-                    return null;
-                  },
+                  controller: _idCtrl,
+                  label: 'Phone or Login ID',
+                  hint: '10-digit phone or e.g. STU-2026001',
+                  prefixIcon: Icons.person_outline_rounded,
+                  validator: (v) => (v?.trim().isEmpty ?? true) ? 'Enter your phone or login ID' : null,
+                ),
+                const SizedBox(height: 16),
+                AppTextField(
+                  controller: _passCtrl,
+                  label: 'Password',
+                  hint: 'Your password',
+                  prefixIcon: Icons.lock_outline_rounded,
+                  obscureText: _obscure,
+                  suffixIcon: _obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                  onSuffixTap: () => setState(() => _obscure = !_obscure),
+                  validator: (v) => (v?.isEmpty ?? true) ? 'Enter your password' : null,
                 ),
                 const SizedBox(height: 32),
                 LoadingButton(
-                  label: 'Send OTP',
+                  label: 'Login',
                   loading: _loading,
-                  onPressed: _sendOtp,
-                ),
-                const SizedBox(height: 16),
-                Center(
-                  child: TextButton(
-                    onPressed: () => _showPasswordDialog(),
-                    child: const Text('Login with ID & Password', style: TextStyle(color: AppColors.primary)),
-                  ),
+                  onPressed: _login,
                 ),
               ],
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  void _showPasswordDialog() {
-    final idCtrl = TextEditingController();
-    final passCtrl = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Login with ID & Password'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: idCtrl, textCapitalization: TextCapitalization.characters, decoration: const InputDecoration(hintText: 'Login ID e.g. STU-2026001', isDense: true)),
-            const SizedBox(height: 12),
-            TextField(controller: passCtrl, obscureText: true, decoration: const InputDecoration(hintText: 'Password', isDense: true)),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              final messenger = ScaffoldMessenger.of(context);
-              if (_codeCtrl.text.trim().isEmpty) {
-                messenger.showSnackBar(const SnackBar(content: Text('Enter your School Code first')));
-                return;
-              }
-              if (idCtrl.text.trim().isEmpty || passCtrl.text.isEmpty) return;
-              Navigator.pop(context);
-              setState(() => _loading = true);
-              final result = await ref.read(authProvider.notifier).loginPassword(
-                schoolCode: _codeCtrl.text.trim().toUpperCase(),
-                loginId: idCtrl.text.trim().toUpperCase(),
-                password: passCtrl.text,
-              );
-              setState(() => _loading = false);
-              if (!mounted) return;
-              if (result['error'] != null) {
-                messenger.showSnackBar(SnackBar(content: Text(result['error'].toString()), backgroundColor: AppColors.error));
-                return;
-              }
-              navigateAfterAuth(context, result);
-            },
-            child: const Text('Login'),
-          ),
-        ],
       ),
     );
   }

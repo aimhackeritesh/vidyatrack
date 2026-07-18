@@ -131,26 +131,28 @@ Fixed every ⛔ blocker and the 🟡 items. All in-repo, no cloud account needed
 - [x] **D0.8** ✅ Built **both** images from the repo root; ran the API image in production mode against Postgres/Redis → health 200, super-admin + parent login work, Swagger off, non-root. Ran the web image → serves the console (200) with the baked API URL. RLS isolation e2e still 5/5.
 - **Result:** the fixed Dockerfiles are proven in real containers before any cloud spend. Ready for D1.
 
-### Phase D1 — Provision infra (needs your Railway account)
-- [ ] **D1.1** Create Railway project; add Postgres + Redis plugins.
-- [ ] **D1.2** Apply `schema.sql` + `rls-setup.sql` to the Railway Postgres via `DATABASE_ADMIN_URL` (D0.5 script). Confirm the `vidyatrack_app` role exists and RLS policies are present.
-- [ ] **D1.3** Run `bootstrap:prod` to create the founder super-admin.
-- **Verify:** connect as `vidyatrack_app` and confirm a no-context query returns 0 rows (RLS deny-by-default holds on prod).
+### Phase D1 — Provision infra ✅ (Railway, 2026-07-18)
+- [x] **D1.1** ✅ Railway project `vidyatrack` created; Postgres + Redis provisioned (both Online).
+- [x] **D1.2** ✅ Applied schema + RLS via `db:apply`. **Caught + fixed a real bug**: schema.sql GRANTs to `vidyatrack_app` before rls-setup.sql created it — only worked locally because the role pre-existed. Fixed apply-db.js to create the role first.
+- [x] **D1.3** ✅ Rotated the `vidyatrack_app` password off the public repo default to a strong random one; ran `bootstrap:prod` for the founder super-admin.
+- **Verify:** ✅ connected as `vidyatrack_app` on the Railway DB → `SELECT COUNT(*) FROM students` with no tenant context = **0** (RLS deny-by-default holds on prod).
 
-### Phase D2 — Deploy API (Railway)
-- [ ] **D2.1** Add the API service from the GitHub repo (Docker build), set all prod env vars (both DB URLs, Redis URL, fresh JWT secrets, `CORS_ORIGIN`, `NODE_ENV=production`, `APP_URL`).
-- [ ] **D2.2** Deploy; watch logs for clean boot.
-- **Verify:** `curl https://<api>/api/v1/health` → 200; super-admin login via API returns a token; RLS still enforced (a tenant token can't see another school).
+### Phase D2 — Deploy API ✅ (Railway, live)
+- [x] **D2.1** ✅ GitHub-linked API service; `railway.json` drives the root-context Dockerfile build + `/api/v1/health` healthcheck. All prod env vars set (private DATABASE_URL as `vidyatrack_app`, Redis ref, fresh JWT secrets, CORS, `NODE_ENV=production`, `APP_URL`).
+- [x] **D2.2** ✅ Deployed; clean boot in logs.
+- **Live:** `https://api-production-28467.up.railway.app`
+- **Verify:** ✅ `/api/v1/health` → 200 `{db:up}`; super-admin login 201 against the Railway DB; Swagger `/api/docs` → 404 (prod).
 
-### Phase D3 — Deploy web console (Vercel)
-- [ ] **D3.1** Import the repo into Vercel, root = `apps/web`, set `NEXT_PUBLIC_API_URL=https://<api>/api/v1`.
-- [ ] **D3.2** Deploy; then set the API's `CORS_ORIGIN` to the Vercel URL and redeploy the API.
-- **Verify:** open the Vercel URL, log in as super-admin, load Analytics/Schools/Broadcast/Audit against the live API — end-to-end in the browser.
+### Phase D3 — Deploy web console ✅ (Vercel, live)
+- [x] **D3.1** ✅ Vercel project `vidyatrack-web`, `NEXT_PUBLIC_API_URL` → the Railway API. Deployed to production.
+- [x] **D3.2** ✅ Locked the API's `CORS_ORIGIN` to the Vercel origin; API redeployed.
+- **Live:** `https://vidyatrack-web.vercel.app`
+- **Verify:** ✅ site loads (200); **cross-origin** super-admin login → HTTP 201 with `access-control-allow-origin: https://vidyatrack-web.vercel.app` and a real token (the exact browser flow).
 
-### Phase D4 — Build & distribute the Android app
-- [ ] **D4.1** Rebuild release APK: `flutter build apk --release --dart-define=API_URL=https://<api>/api/v1`.
-- [ ] **D4.2** Host it (GitHub Release on the repo is cleanest for a resume link) and produce a download link.
-- **Verify:** install on the Pixel 9a emulator (and/or a real phone), confirm it logs in and loads data **against the deployed API**, not localhost.
+### Phase D4 — Build & distribute the Android app 🟡 (in progress)
+- [x] **D4.1** ✅ Reworked login to password-only (phone-or-ID + password; dropped the non-functional OTP path); default `API_URL` now points at the deployed API. `flutter analyze` 0 errors, `flutter test` 4/4. Built release APK (58.7 MB) baked with the prod URL.
+- [ ] **D4.2** Publish it as a GitHub Release for a stable download link.
+- **Verify:** install on the Pixel 9a emulator, confirm login + data **against the deployed API**.
 
 ### Phase D5 — Hardening & verification pass
 - [ ] **D5.1** Security sanity: CORS locked to web origin, Swagger off in prod, no dev secrets in use, `.env` not in git.

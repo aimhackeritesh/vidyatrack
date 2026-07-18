@@ -4,6 +4,21 @@ A full-stack, multi-tenant school management platform — Flutter mobile app, Ne
 
 Built for small Indian schools (Tier 2/3) that need digital attendance, fees, and parent communication without the overhead of enterprise school-ERP software.
 
+## 🚀 Live demo
+
+| Piece | Link |
+|---|---|
+| **Super-admin web console** | https://vidyatrack-web.vercel.app |
+| **API health** | https://api-production-28467.up.railway.app/api/v1/health |
+| **Android app (APK)** | See the latest [GitHub Release](https://github.com/aimhackeritesh/vidyatrack/releases) |
+
+**Demo credentials** (this is a public demo with seeded fake data — it may be reset periodically):
+
+- **Web console** (super-admin): `founder@vidyatrack.in` / `Demo@1234`
+- **Mobile app**: School Code `VDTRK2627DEMO01`, password `Demo@1234` for all — Admin phone `9999900001`, Teacher `9999900002`, Parent `9999900003`.
+
+> Deployed on Railway (API + Postgres + Redis) and Vercel (web). Login is password-based in this deployment (SMS OTP isn't wired). Uploaded files are ephemeral, and the in-app fee payment uses a mock gateway (no real money).
+
 ## What it does
 
 **For a single school** (admin / teacher / parent / student roles):

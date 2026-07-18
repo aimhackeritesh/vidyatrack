@@ -1,5 +1,11 @@
 class AppConstants {
-  static const apiBaseUrl = String.fromEnvironment('API_URL', defaultValue: 'http://10.0.2.2:3000/api/v1');
+  // Default points at the deployed API so a plain release build works out of the
+  // box. Override for local dev with:
+  //   --dart-define=API_URL=http://10.0.2.2:3000/api/v1   (Android emulator → host)
+  static const apiBaseUrl = String.fromEnvironment(
+    'API_URL',
+    defaultValue: 'https://api-production-28467.up.railway.app/api/v1',
+  );
   static const appName = 'VidyaTrack';
   static const tokenKey = 'access_token';
   static const refreshTokenKey = 'refresh_token';

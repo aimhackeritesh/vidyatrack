@@ -45,9 +45,13 @@ const FIRST_NAMES = [
 ];
 const LAST_NAMES = ['Sharma', 'Singh', 'Kumar', 'Gupta', 'Verma', 'Mishra', 'Yadav', 'Tiwari', 'Dubey', 'Agarwal'];
 
+const seedUrl = process.env.DATABASE_ADMIN_URL || process.env.DATABASE_URL || '';
 const ds = new DataSource({
   type: 'postgres',
-  url: process.env.DATABASE_ADMIN_URL || process.env.DATABASE_URL,
+  url: seedUrl,
+  // Managed Postgres (Railway/RDS/etc.) requires TLS over the public proxy;
+  // local docker does not.
+  ssl: /localhost|127\.0\.0\.1|@postgres[.:]/.test(seedUrl) ? false : { rejectUnauthorized: false },
   synchronize: false,
   logging: false,
   entities: [],
