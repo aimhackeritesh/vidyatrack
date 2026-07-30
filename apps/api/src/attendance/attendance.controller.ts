@@ -78,8 +78,8 @@ export class AttendanceController {
   // ── Defaulters report ──
   @Get('defaulters')
   @Roles('admin', 'teacher')
-  @ApiOperation({ summary: 'Students below an attendance threshold (default 75%)' })
+  @ApiOperation({ summary: "Students below an attendance threshold (defaults to the school's attendance.defaulter_threshold)" })
   defaulters(@CurrentUser() u: any, @Query('threshold') threshold?: string, @Query('month') month?: string) {
-    return this.svc.getDefaulters(u.schoolId, threshold ? Number(threshold) : 75, month);
+    return this.svc.getDefaulters(u.schoolId, threshold ? Number(threshold) : undefined, month);
   }
 }

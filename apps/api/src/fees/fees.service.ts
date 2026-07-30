@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { TenantDb } from '../common/database/tenant-db.service';
+import { SchoolConfigService } from '../config/school-config.service';
 import { v4 as uuidv4 } from 'uuid';
 import { PAYMENT_GATEWAY, PaymentGateway } from './payment/payment-gateway.interface';
 
@@ -8,6 +9,7 @@ export class FeesService {
   constructor(
     private readonly db: TenantDb,
     @Inject(PAYMENT_GATEWAY) private readonly gateway: PaymentGateway,
+    private readonly config: SchoolConfigService,
   ) {}
 
   getFeeHeads(schoolId: string) {
@@ -55,7 +57,9 @@ export class FeesService {
    */
   async generateInvoices(schoolId: string, userId: string, month: string, classId?: string) {
     const monthDate = month.length === 7 ? `${month}-01` : month;
-    const dueDateDay = Number(await this.getSetting(schoolId, 'due_date_day', '10'));
+    // Registry-resolved; SchoolConfigService still honours the pre-V4 un-namespaced
+    // `due_date_day` row for schools configured before the registry existed.
+    const dueDateDay = await this.config.getInt(schoolId, 'fees.due_date_day');
 
     const students = await this.db.query(
       `SELECT s.id, sec.class_id
@@ -97,11 +101,6 @@ export class FeesService {
 
     await this.audit(schoolId, userId, 'invoices.generate', null, { month: monthDate, classId, created, updated, skipped });
     return { month: monthDate, studentsProcessed: students.length, created, updated, skipped };
-  }
-
-  private async getSetting(schoolId: string, key: string, fallback: string): Promise<string> {
-    const [row] = await this.db.query(`SELECT value FROM school_settings WHERE school_id=$1 AND key=$2`, [schoolId, key]);
-    return row?.value ?? fallback;
   }
 
   async collectPayment(schoolId: string, collectorId: string, data: any) {

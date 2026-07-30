@@ -2,6 +2,48 @@
 
 All notable changes to VidyaTrack. Format loosely follows Keep a Changelog.
 
+## [Unreleased] — V4.0: The School Configuration System (2026-07-30)
+
+First phase of [V4-PLAN.md](V4-PLAN.md) (workstream B1–B4). School-variable behaviour becomes **typed data instead of code**: a registry in the API, one bootstrap call for clients, and the previously-hardcoded consumers migrated onto it. Adding new per-school variability now costs one registry entry.
+
+### Added
+- **`apps/api/src/config/settings-registry.ts`** — 16 typed settings (`int`/`bool`/`string`/`enum`/`time`/`json`/`color`) with defaults, labels, help text, category, `editableBy`, and range/enum validation. Framework-free so it's unit-testable and script-importable.
+- **`SchoolConfigService`** — merges registry defaults with a school's `school_settings` overrides into one typed object plus a `version` hash. Redis-cached per school (5 min TTL, invalidated on write); cache read/write failures degrade to a Postgres read rather than a 500. Reads go through `TenantDb`, so RLS governs them like every other query. No schema change.
+- **`GET /schools/config`** (admin/teacher/parent/student) — the client bootstrap: complete typed config + `version`, one round-trip, no per-screen setting lookups.
+- **`GET /superadmin/settings-registry`** — the catalog, so the console (V4.1) renders types/labels/ranges from the API instead of hardcoding them.
+- **`GET /superadmin/schools/:id/config`** — a school's effective config as its apps see it.
+- Mobile: `SchoolConfig` model + `schoolConfigProvider` (fetch on login and app start, SharedPreferences-cached against `version`, last-known-config fallback when offline) and `schoolConfigValueProvider` for a synchronous read that falls back to registry defaults — config never blocks or breaks a screen.
+- 5 unit tests covering config parsing, defaults, working-day mapping, wrong-typed values, and cache round-trip/corruption.
+
+### Changed
+- **Settings writes are now validated.** `PATCH /superadmin/schools/:id/settings` 400s on an unknown key or an out-of-range/ill-typed value; before, any key/value was accepted, so a typo'd key silently did nothing forever. Values are canonicalised on write (`#ab12cd` → `#AB12CD`, `yes` → `true`).
+- **Consumers migrated off hardcoded values:** invoice due date (`fees.due_date_day`), defaulters threshold (`attendance.defaulter_threshold`, 4 sites incl. the mobile default), timetable periods (`timetable.periods_per_day`, was `List.generate(8, …)`), and timetable day tabs (`academic.working_days`, was a fixed Mon–Sat × 6).
+- `GET /attendance/defaulters` without a `threshold` param now uses the school's configured threshold instead of a hardcoded 75. An explicit param still wins.
+- The timetable editor's `_editSlot` takes the day as a parameter rather than reading `_selectedDay`, so the day written always matches the day displayed once working days are configurable.
+- The defaulters dropdown folds the school's configured threshold into its preset options — a configured value like 65 isn't in `[60,70,75,80,90]`, and `DropdownButton` asserts when `value` isn't among `items`.
+
+### Fixed (found by verifying live, not by compiling)
+- **Defaulters report red-screened on every row.** `defaulters_screen.dart` cast `pct` with `as num?`, but that column is a Postgres `ROUND(…)::NUMERIC`, which node-postgres returns as a **String** to preserve precision → `type 'String' is not a subtype of type 'num?' in type cast`. Latent since the screen shipped: the seeded demo data has no student below 75%, so the list was always empty and the cast never executed. Raising `attendance.defaulter_threshold` to 90 made 138 rows reachable and the screen crashed instantly. Now `double.tryParse`, matching the correct idiom already used in `attendance_chart_card.dart:54`. Checked the other four `as num` sites in the app: only this one reads a NUMERIC column — `my_attendance_screen.dart:69` reads a JS-computed number and is safe.
+
+### Notes / found while building
+- The registry ships 16 settings but only **4 are consumed** in this phase (working days, periods/day, defaulter threshold, fee due date). Each entry carries a `consumed` flag, surfaced in the catalog, so the V4.1 console can badge the rest rather than let the owner change a value and wonder why nothing happened. `grading.*`, `features.*`, `branding.*`, `locale.language` and `fees.late_fine_per_day` have **no consumer anywhere in the codebase yet** — they land in V4.3/V4.4.
+- **Legacy key migration:** the one pre-V4 setting was stored un-namespaced as `due_date_day`, not `fees.due_date_day` as V4-PLAN §3.2 assumed. `SettingDef.legacyKey` reads the old row as a fallback (namespaced wins), so live schools keep their setting with no data surgery, and the next edit rewrites it under the registry key.
+- `academic.working_days` does **not** feed the attendance-percentage denominator as V4-PLAN §3.2 claims — that percentage is computed from the `attendance_sessions` rows that exist, not from a working-days calendar. Only the timetable day tabs consume it. Left as-is (correct behaviour); noted so the plan isn't trusted over the code.
+- `AttendanceService.exportDefaultersCsv` and `exportRegisterCsv` are **unreachable dead code** — no controller route, no client caller. So V4-PLAN G11 ("no data export anywhere") is right from a user's point of view; V4.3/C4 should wire these rather than write new ones.
+- `ValidationResult` is a flat `{ok, value?, error?}` rather than a discriminated union because `apps/api` compiles with `strictNullChecks: false`, under which `if (!result.ok)` doesn't narrow a `{ok:true}|{ok:false}` union.
+- The new module is `SchoolConfigModule`, not `ConfigModule` — `@nestjs/config`'s `ConfigModule` is already imported globally in `app.module.ts`.
+
+### Verified live (local API + Docker Postgres/Redis, real HTTP calls)
+- `GET /schools/config` returns all 16 settings correctly typed (ints as ints, `academic.working_days` as an array, `grading.bands` as an object) plus a version hash.
+- `PATCH timetable.periods_per_day=6` → the next `GET /schools/config` reports 6 and a new version hash (cache invalidation works, no restart needed).
+- Validation: unknown key → 400 with a pointer to the registry; `periods_per_day=99` (max 12) → 400; `show_logo=maybe` → 400; `primary_color=blue` → 400; `#ab12cd` → 200 stored as `#AB12CD`. Config unchanged after every rejected write.
+- **Real consumer, invoices:** `fees.due_date_day=5` → generating 2026-09 produced 240 invoices all due 2026-09-05; `=20` → 2026-10 produced 240 all due 2026-10-20.
+- **Real consumer, defaulters:** with the setting at 90 the no-param report returned 138 students (matching an explicit `?threshold=90`); at 50 it returned 0 (matching `?threshold=50`). An explicit param still overrides the setting.
+- **Legacy fallback:** no rows → 10 (default); a bare `due_date_day=20` row only → 20; then a namespaced write of 5 → 5, with the legacy row left untouched.
+- Roles: parent gets 200 on `/schools/config`; a school admin gets 403 on both superadmin settings endpoints; no token gets 401. Every write wrote a `settings.update` audit row with the canonicalised key and value.
+- **On a real Android emulator** (Pixel-class 1080×2424, debug build against the local API): logged in as the demo admin, opened the timetable editor for Class 1 / Section A. With `periods_per_day=6` the editor rendered periods 1–6; after setting `=10` and `academic.working_days=["mon","wed","fri"]` and restarting the *same binary*, it rendered periods 1–10 with day tabs Mon/Wed/Fri instead of Mon–Sat. With `defaulter_threshold=90` the defaulters screen opened on "Below 90% · 138 students" — matching the API exactly — and listed rows at 85.2%.
+- Gates: `npm run build` (api) clean · `next build` (web) clean · RLS isolation e2e **5/5** · `flutter analyze` **0 errors / 0 warnings** (11 expected infos) · `flutter test` **9/9**.
+
 ## [v1.0.0-deploy] — First live deployment (2026-07-18)
 
 Full plan in `DEPLOYMENT-PLAN-V1.md`. The API, super-admin web console, Postgres, and Redis are now live on the public internet; the Android app is a downloadable GitHub Release built against the deployed API.

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/config/school_config.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_button.dart';
 
-const _dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+/// Indexed by timetable day number − 1 (1 = Mon … 7 = Sun).
+const _dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 final _classesProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final res = await ref.watch(dioProvider).get('/classes');
@@ -88,7 +90,9 @@ class _EditTimetableScreenState extends ConsumerState<EditTimetableScreen> {
     if (mounted) setState(() => _saving = false);
   }
 
-  Future<void> _editSlot({Map<String, dynamic>? existing, required int periodNo}) async {
+  /// `day` is passed in rather than read from `_selectedDay` because the day
+  /// actually shown is derived from the school's configured working days.
+  Future<void> _editSlot({Map<String, dynamic>? existing, required int periodNo, required int day}) async {
     final teachers = await ref.read(_teachersProvider.future);
     final subjectCtrl = TextEditingController(text: existing?['subject'] as String? ?? '');
     String? teacherId = existing?['teacherId'] as String?;
@@ -100,7 +104,7 @@ class _EditTimetableScreenState extends ConsumerState<EditTimetableScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSt) => AlertDialog(
-          title: Text('Period $periodNo — ${_dayNames[_selectedDay - 1]}'),
+          title: Text('Period $periodNo — ${_dayNames[day - 1]}'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -167,9 +171,9 @@ class _EditTimetableScreenState extends ConsumerState<EditTimetableScreen> {
 
     if (result == null) return;
     setState(() {
-      _slots.removeWhere((s) => s['day'] == _selectedDay && s['periodNo'] == periodNo);
+      _slots.removeWhere((s) => s['day'] == day && s['periodNo'] == periodNo);
       if (result['delete'] != true) {
-        _slots.add({'day': _selectedDay, 'periodNo': periodNo, ...result});
+        _slots.add({'day': day, 'periodNo': periodNo, ...result});
       }
     });
   }
@@ -185,8 +189,14 @@ class _EditTimetableScreenState extends ConsumerState<EditTimetableScreen> {
   @override
   Widget build(BuildContext context) {
     final classesAsync = ref.watch(_classesProvider);
-    final dayPeriods = List.generate(8, (i) => i + 1); // up to 8 periods/day
-    final daySlots = {for (final s in _slots.where((s) => s['day'] == _selectedDay)) s['periodNo'] as int: s};
+    final config = ref.watch(schoolConfigValueProvider);
+    // Periods and days come from this school's settings, not a hardcoded Mon–Sat × 8.
+    final dayPeriods = List.generate(config.periodsPerDay, (i) => i + 1);
+    final workingDays = config.workingDayNumbers;
+    // The stored choice may not be a working day (default Mon, or the setting
+    // changed since) — fall back to the school's first working day.
+    final selectedDay = workingDays.contains(_selectedDay) ? _selectedDay : workingDays.first;
+    final daySlots = {for (final s in _slots.where((s) => s['day'] == selectedDay)) s['periodNo'] as int: s};
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -234,20 +244,19 @@ class _EditTimetableScreenState extends ConsumerState<EditTimetableScreen> {
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
-                  children: List.generate(6, (i) {
-                    final day = i + 1;
-                    final selected = day == _selectedDay;
+                  children: workingDays.map((day) {
+                    final selected = day == selectedDay;
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ChoiceChip(
-                        label: Text(_dayNames[i]),
+                        label: Text(_dayNames[day - 1]),
                         selected: selected,
                         onSelected: (_) => setState(() => _selectedDay = day),
                         selectedColor: AppColors.primary,
                         labelStyle: TextStyle(color: selected ? Colors.white : AppColors.textPrimary, fontWeight: FontWeight.w600),
                       ),
                     );
-                  }),
+                  }).toList(),
                 ),
               ),
               const SizedBox(height: 12),
@@ -261,7 +270,7 @@ class _EditTimetableScreenState extends ConsumerState<EditTimetableScreen> {
                           final periodNo = dayPeriods[i];
                           final slot = daySlots[periodNo];
                           return GestureDetector(
-                            onTap: () => _editSlot(existing: slot, periodNo: periodNo),
+                            onTap: () => _editSlot(existing: slot, periodNo: periodNo, day: selectedDay),
                             child: Container(
                               padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(

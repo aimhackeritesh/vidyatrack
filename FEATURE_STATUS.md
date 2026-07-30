@@ -5,6 +5,28 @@
 
 **Current state:** Phase 0 ✅, Phase 1 ✅, Phase 2 (credentials ✅, attendance-history ✅; edit-UI/bulk-import/holidays/reports remain), Phase 3 (revenue-v2 ✅, comms ✅; push/uploads remain), Phase 4 (academics homework/material/results ✅, super-admin platform ✅; report-center remains), Phase 5 not started, **V3 ✅ complete** (see below). Every backend change verified live; `flutter analyze` = 0 errors/warnings; `next build` clean; RLS isolation 5/5.
 
+## V4.0 — School Configuration System ✅ (2026-07-30, verified live)
+
+| Item | Status | Notes |
+|---|---|---|
+| **Settings registry** | ✅ | `apps/api/src/config/settings-registry.ts` — 16 typed settings with defaults, labels, help text, category, `editableBy`, range/enum validation, and a `consumed` flag |
+| **`SchoolConfigService`** | ✅ | Registry defaults + `school_settings` overrides → one typed object + `version` hash; Redis-cached per school, invalidated on write, degrades to a DB read if Redis is down; reads via `TenantDb` so RLS still governs. No schema change |
+| **`GET /schools/config`** | ✅ verified live | All school roles; one bootstrap round-trip. Parent 200, no-token 401 |
+| **`GET /superadmin/settings-registry`** | ✅ verified live | The catalog for UIs; school admin correctly 403s |
+| **`GET /superadmin/schools/:id/config`** | ✅ verified live | A school's effective config as its apps see it |
+| **Settings write validation** | ✅ verified live | Unknown key / out-of-range / ill-typed → 400 (was: silently accepted). Values canonicalised (`#ab12cd`→`#AB12CD`). Every write audit-logged |
+| **Legacy key migration** | ✅ verified live | Pre-V4 bare `due_date_day` row still honoured via `SettingDef.legacyKey`; namespaced key wins; no data surgery needed |
+| **Consumer: invoice due date** | ✅ verified live | `fees.due_date_day` — `=5` → 240 invoices due 2026-09-05; `=20` → 240 due 2026-10-20 |
+| **Consumer: defaulters threshold** | ✅ verified live | `attendance.defaulter_threshold` — setting at 90 → 138 students with no query param; at 50 → 0. Explicit `?threshold=` still overrides |
+| **Consumer: timetable periods** | ✅ verified on emulator | `timetable.periods_per_day` — was `List.generate(8, …)`; set 6 → editor renders 6 rows, set 10 → renders 10, same binary, restart only |
+| **Consumer: timetable working days** | ✅ verified on emulator | `academic.working_days` — set `["mon","wed","fri"]` → day tabs render Mon/Wed/Fri instead of Mon–Sat |
+| **Mobile `SchoolConfig` provider** | ✅ | Fetched on login + app start, SharedPreferences-cached against `version`, last-known-config fallback offline; `schoolConfigValueProvider` gives screens a synchronous read that falls back to registry defaults |
+| **Defaulters screen threshold** | ✅ | Seeds from config instead of a hardcoded 75; configured value folded into the dropdown options (a value like 65 isn't a preset and `DropdownButton` asserts if `value` isn't in `items`) |
+| **Bug found & fixed during V4.0 verification** | 🐞→✅ | `defaulters_screen.dart` cast `pct` (a Postgres `ROUND(…)::NUMERIC`, returned as a **String** by node-postgres) with `as num?` → red-screen `type 'String' is not a subtype of type 'num?'` on every row. Latent since V2: the seeded data has no student below 75, so the list was always empty and the cast never ran. Raising the threshold to 90 made it reachable. Now uses `double.tryParse`, matching `attendance_chart_card.dart:54` |
+| Settings declared but **not yet consumed** | 🟡 | `grading.*`, `features.*`, `branding.*`, `locale.language`, `fees.late_fine_per_day`, `academic.year_start_month`, `attendance.mode` — in the registry with a `consumed: false` flag so the V4.1 console can badge them. Land in V4.3/V4.4 |
+| Typed console settings editor | 🟡 | V4.1 (B6) — catalog endpoint already serves it |
+| Mobile "School Settings" screen | 🟡 | V4.1 (B5) |
+
 ## V3 — Timetable, Syllabus, Study Material, Fees, Super-Admin ✅ (2026-07-16, verified live)
 
 | Item | Status | Notes |

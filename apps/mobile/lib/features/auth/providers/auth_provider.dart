@@ -3,11 +3,13 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../../../core/network/api_client.dart';
+import '../../../core/config/school_config.dart';
 import '../../../core/constants/app_constants.dart';
 
 class AuthNotifier extends StateNotifier<AsyncValue<void>> {
   final Dio _dio;
-  AuthNotifier(this._dio) : super(const AsyncValue.data(null));
+  final Ref _ref;
+  AuthNotifier(this._dio, this._ref) : super(const AsyncValue.data(null));
 
   Future<String?> sendOtp({required String schoolCode, required String phone}) async {
     try {
@@ -71,7 +73,8 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
 
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+    await prefs.clear(); // includes the cached school config
+    _ref.invalidate(schoolConfigProvider);
   }
 
   Future<void> _saveSession(Map<String, dynamic> data) async {
@@ -83,6 +86,12 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
     if (data['userRoleId'] != null) await prefs.setString(AppConstants.userRoleIdKey, data['userRoleId']);
     if (data['user'] != null) await prefs.setString(AppConstants.userKey, jsonEncode(data['user']));
     await prefs.setBool(AppConstants.mustChangePasswordKey, data['mustChangePassword'] == true);
+
+    // Bootstrap this school's config for the new session. Dropping the previous
+    // school's cached copy matters when signing in as a different school on the
+    // same device — otherwise the old school's periods/threshold would persist.
+    await prefs.remove(AppConstants.schoolConfigKey);
+    _ref.invalidate(schoolConfigProvider);
   }
 
   String _extractError(DioException e) {
@@ -93,5 +102,5 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
 }
 
 final authProvider = StateNotifierProvider<AuthNotifier, AsyncValue<void>>((ref) {
-  return AuthNotifier(ref.watch(dioProvider));
+  return AuthNotifier(ref.watch(dioProvider), ref);
 });

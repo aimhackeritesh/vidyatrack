@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/config/school_config.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/role_gate.dart';
@@ -14,7 +15,9 @@ class DefaultersScreen extends ConsumerStatefulWidget {
 
 class _DefaultersScreenState extends ConsumerState<DefaultersScreen> {
   bool _loading = true;
-  int _threshold = 75;
+  /// Null until the first load, which uses the school's configured threshold
+  /// (`attendance.defaulter_threshold`). Set once the user picks a value.
+  int? _threshold;
   List<Map<String, dynamic>> _items = [];
 
   @override
@@ -26,7 +29,11 @@ class _DefaultersScreenState extends ConsumerState<DefaultersScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final res = await ref.read(dioProvider).get('/attendance/defaulters', queryParameters: {'threshold': _threshold});
+      // Omitting `threshold` lets the API apply this school's configured value.
+      final res = await ref.read(dioProvider).get(
+            '/attendance/defaulters',
+            queryParameters: {if (_threshold != null) 'threshold': _threshold},
+          );
       _items = (res.data as List).cast<Map<String, dynamic>>();
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
@@ -34,6 +41,13 @@ class _DefaultersScreenState extends ConsumerState<DefaultersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final configured = ref.watch(schoolConfigValueProvider).defaulterThreshold;
+    final selected = _threshold ?? configured;
+    // The school's configured threshold may not be one of the preset options
+    // (it's any value 40–95), and DropdownButton asserts if `value` isn't in
+    // `items` — so fold it into the list.
+    final options = <int>{60, 70, 75, 80, 90, configured, selected}.toList()..sort();
+
     return RoleGate(
       allowed: const ['admin', 'teacher'],
       child: Scaffold(
@@ -47,8 +61,8 @@ class _DefaultersScreenState extends ConsumerState<DefaultersScreen> {
                 children: [
                   const Text('Below ', style: TextStyle(color: AppColors.textSecondary)),
                   DropdownButton<int>(
-                    value: _threshold,
-                    items: const [60, 70, 75, 80, 90].map((t) => DropdownMenuItem(value: t, child: Text('$t%'))).toList(),
+                    value: selected,
+                    items: options.map((t) => DropdownMenuItem(value: t, child: Text('$t%'))).toList(),
                     onChanged: (v) {
                       if (v != null) {
                         setState(() => _threshold = v);
@@ -74,7 +88,11 @@ class _DefaultersScreenState extends ConsumerState<DefaultersScreen> {
                             separatorBuilder: (_, __) => const SizedBox(height: 6),
                             itemBuilder: (_, i) {
                               final d = _items[i];
-                              final pct = (d['pct'] as num?)?.toDouble() ?? 0;
+                              // `pct` comes from a Postgres ROUND(…)::NUMERIC, which
+                              // node-postgres returns as a String to preserve precision —
+                              // a direct `as num?` cast throws. Same idiom as
+                              // attendance_chart_card.dart.
+                              final pct = double.tryParse(d['pct']?.toString() ?? '') ?? 0;
                               return Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                                 decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.divider)),

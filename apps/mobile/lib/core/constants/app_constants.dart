@@ -16,4 +16,5 @@ class AppConstants {
   static const schoolCodeKey = 'school_code';
   static const schoolNameKey = 'school_name';
   static const mustChangePasswordKey = 'must_change_password';
+  static const schoolConfigKey = 'school_config';
 }

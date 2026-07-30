@@ -1,11 +1,15 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { TenantDb } from '../common/database/tenant-db.service';
+import { SchoolConfigService } from '../config/school-config.service';
 import { v4 as uuidv4 } from 'uuid';
 import { SubmitAttendanceDto, GetAttendanceQuery } from './dto/attendance.dto';
 
 @Injectable()
 export class AttendanceService {
-  constructor(private readonly db: TenantDb) {}
+  constructor(
+    private readonly db: TenantDb,
+    private readonly config: SchoolConfigService,
+  ) {}
 
   /** One student's daily statuses + monthly stats. Used by parent/student calendars. */
   async getStudentMonth(schoolId: string, user: any, studentId: string, month?: string) {
@@ -84,7 +88,12 @@ export class AttendanceService {
   }
 
   // ── Defaulters report (< threshold %) ────────────────────────────────────────
-  async getDefaulters(schoolId: string, threshold = 75, month?: string) {
+  /**
+   * `threshold` omitted means "use this school's configured threshold"
+   * (`attendance.defaulter_threshold`), not a hardcoded 75.
+   */
+  async getDefaulters(schoolId: string, threshold?: number, month?: string) {
+    const effectiveThreshold = threshold ?? (await this.config.getInt(schoolId, 'attendance.defaulter_threshold'));
     const monthStart = month ? `${month}-01` : null;
     return this.db.query(
       `SELECT s.id, s.name, s.roll_no, sec.name AS section, c.name AS class,
@@ -101,7 +110,7 @@ export class AttendanceService {
        GROUP BY s.id, s.name, s.roll_no, sec.name, c.name
        HAVING ROUND(COUNT(*) FILTER (WHERE ar.status IN ('present','late'))::NUMERIC / NULLIF(COUNT(*),0) * 100, 1) < $2
        ORDER BY pct ASC, c.name, sec.name, s.roll_no`,
-      [schoolId, threshold, monthStart],
+      [schoolId, effectiveThreshold, monthStart],
     );
   }
 
@@ -265,7 +274,7 @@ export class AttendanceService {
     );
   }
 
-  async exportDefaultersCsv(schoolId: string, threshold = 75, month?: string): Promise<string> {
+  async exportDefaultersCsv(schoolId: string, threshold?: number, month?: string): Promise<string> {
     const list = await this.getDefaulters(schoolId, threshold, month);
     let csv = 'Class,Section,Roll No,Admission No,Student Name,Attendance %,Absent Days,Total Days\n';
     for (const row of list) {

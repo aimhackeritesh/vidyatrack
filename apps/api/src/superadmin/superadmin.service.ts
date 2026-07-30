@@ -2,6 +2,8 @@ import { BadRequestException, Injectable, NotFoundException, UnauthorizedExcepti
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { TenantDb } from '../common/database/tenant-db.service';
+import { SchoolConfigService } from '../config/school-config.service';
+import { getSettingDef, validateSetting } from '../config/settings-registry';
 import { v4 as uuidv4 } from 'uuid';
 import { randomInt } from 'crypto';
 import * as argon2 from 'argon2';
@@ -20,6 +22,7 @@ export class SuperAdminService {
     private readonly db: TenantDb,
     private readonly jwt: JwtService,
     private readonly cfg: ConfigService,
+    private readonly schoolConfig: SchoolConfigService,
   ) {}
 
   async login(email: string, password: string) {
@@ -143,20 +146,48 @@ export class SuperAdminService {
     return { school, activeStudents: Number(students.total), revenue: revenue ?? null, lastActive: lastActive?.last_active ?? null };
   }
 
-  // ── Feature flags / fee rules (school_settings) ──────────────────────────────
+  // ── School settings (registry-backed) ────────────────────────────────────────
+  /** Raw stored overrides for a school. Effective values come from `getSchoolConfig`. */
   async getSchoolSettings(schoolId: string) {
     return this.db.query(`SELECT key, value FROM school_settings WHERE school_id=$1 ORDER BY key`, [schoolId]);
   }
 
+  /** The catalog the console renders its typed editor from. */
+  getSettingsRegistry() {
+    return this.schoolConfig.getRegistry();
+  }
+
+  /** What the school's apps actually resolve — defaults with overrides applied. */
+  getSchoolConfig(schoolId: string) {
+    return this.schoolConfig.resolve(schoolId);
+  }
+
+  /**
+   * Writes one setting after validating it against the registry. Before V4 any
+   * key/value was accepted, so a typo'd key silently did nothing forever; now an
+   * unknown key or out-of-range value is a 400. Legacy un-namespaced rows stay
+   * readable (see SchoolConfigService) but new writes always use the registry key.
+   */
   async setSchoolSetting(actorId: string, schoolId: string, key: string, value: string) {
     if (!key) throw new BadRequestException('key is required');
+
+    const def = getSettingDef(key);
+    if (!def) {
+      throw new BadRequestException(
+        `Unknown setting '${key}'. Call GET /superadmin/settings-registry for the valid keys.`,
+      );
+    }
+    const result = validateSetting(def, value);
+    if (!result.ok) throw new BadRequestException(result.error);
+
     await this.db.query(
       `INSERT INTO school_settings(school_id,key,value,updated_at) VALUES($1,$2,$3,NOW())
        ON CONFLICT(school_id,key) DO UPDATE SET value=EXCLUDED.value, updated_at=NOW()`,
-      [schoolId, key, String(value)],
+      [schoolId, def.key, result.value],
     );
-    await this.audit(schoolId, actorId, 'settings.update', schoolId, { key, value });
-    return { key, value };
+    await this.schoolConfig.invalidate(schoolId);
+    await this.audit(schoolId, actorId, 'settings.update', schoolId, { key: def.key, value: result.value });
+    return { key: def.key, value: result.value };
   }
 
   // ── Broadcast ─────────────────────────────────────────────────────────────────

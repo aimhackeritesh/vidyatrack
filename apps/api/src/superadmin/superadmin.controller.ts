@@ -48,13 +48,23 @@ export class SuperAdminController {
   @UseGuards(JwtAuthGuard, RolesGuard) @Roles('superadmin') @ApiBearerAuth()
   schoolStats(@Param('id') id: string) { return this.svc.getSchoolStats(id); }
 
+  @Get('settings-registry')
+  @UseGuards(JwtAuthGuard, RolesGuard) @Roles('superadmin') @ApiBearerAuth()
+  @ApiOperation({ summary: 'The settings catalog — types, defaults, labels, ranges — so UIs never hardcode it' })
+  settingsRegistry() { return this.svc.getSettingsRegistry(); }
+
   @Get('schools/:id/settings')
   @UseGuards(JwtAuthGuard, RolesGuard) @Roles('superadmin') @ApiBearerAuth()
   getSettings(@Param('id') id: string) { return this.svc.getSchoolSettings(id); }
 
+  @Get('schools/:id/config')
+  @UseGuards(JwtAuthGuard, RolesGuard) @Roles('superadmin') @ApiBearerAuth()
+  @ApiOperation({ summary: "A school's effective config (defaults + overrides) as the app sees it" })
+  getSchoolConfig(@Param('id') id: string) { return this.svc.getSchoolConfig(id); }
+
   @Patch('schools/:id/settings')
   @UseGuards(JwtAuthGuard, RolesGuard) @Roles('superadmin') @ApiBearerAuth()
-  @ApiOperation({ summary: 'Toggle a per-school feature flag / fee rule, e.g. {key:"online_payments",value:"true"}' })
+  @ApiOperation({ summary: 'Set a per-school setting, e.g. {key:"timetable.periods_per_day",value:"6"}. Validated against the registry.' })
   setSetting(@CurrentUser() u: any, @Param('id') id: string, @Body() dto: any) { return this.svc.setSchoolSetting(u.id, id, dto.key, dto.value); }
 
   @Post('broadcast')
