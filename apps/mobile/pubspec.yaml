@@ -50,6 +50,7 @@ dependencies:
   package_info_plus: ^8.0.0
 
 dev_dependencies:
+  flutter_launcher_icons: ^0.14.1
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
@@ -76,3 +77,13 @@ flutter:
           weight: 600
         - asset: assets/fonts/Poppins-Bold.ttf
           weight: 700
+
+# App launcher icons — regenerate with:
+#   dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "icon/app_icon.png"
+  adaptive_icon_background: "#1E88E5"
+  adaptive_icon_foreground: "icon/app_icon_foreground.png"
+  remove_alpha_ios: true

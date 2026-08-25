@@ -1,8 +1,21 @@
 # VidyaTrack v2 — Project Status Report
 
+> ## ⚠️ HISTORICAL DOCUMENT — DO NOT TRUST AS CURRENT
+> **This describes the project as of 2026-06-12 (the V2 era).** Since then V3 shipped
+> (timetable, syllabus, study material, full fees, super-admin) and the app was deployed
+> live to Railway + Vercel. The line below claiming this is "the single source of truth"
+> was true when written and is **no longer true**.
+>
+> **For current state, read instead:** [HANDOVER.md](HANDOVER.md) (orientation) ·
+> [CHANGELOG.md](CHANGELOG.md) (what shipped when) ·
+> [FEATURE_STATUS.md](FEATURE_STATUS.md) (per-screen status) ·
+> [V4-PLAN.md](V4-PLAN.md) (next work).
+>
+> Kept in the repo only as a record of the V2 milestone.
+
 **Compiled:** 2026-06-12 · **Scope:** Everything executed against the `V2-IMPROVEMENT-PLAN.md` roadmap, phases 0–4, plus a full runtime audit and polish pass.
 
-This document is the single source of truth for *where the project stands right now*. It doesn't replace the other tracking docs — `V2-IMPROVEMENT-PLAN.md` (original spec, reproduced in full below), `CHANGELOG.md` (detailed dated entries), and `FEATURE_STATUS.md` (live button/screen matrix) all remain in the repo root and stay up to date per-phase.
+~~This document is the single source of truth for *where the project stands right now*.~~ (See the notice above — superseded.) It doesn't replace the other tracking docs — `V2-IMPROVEMENT-PLAN.md` (original spec, reproduced in full below), `CHANGELOG.md` (detailed dated entries), and `FEATURE_STATUS.md` (live button/screen matrix) all remain in the repo root and stay up to date per-phase.
 
 ## At a glance
 

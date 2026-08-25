@@ -9,9 +9,9 @@ import '../../../features/auth/providers/auth_provider.dart';
 
 // Static support / store / legal links used by the drawer.
 const _supportEmail = 'mailto:support@vidyatrack.in';
-const _playStoreUrl = 'https://play.google.com/store/apps/details?id=in.vidyatrack.app';
-const _privacyUrl = 'https://vidyatrack.in/privacy';
-const _termsUrl = 'https://vidyatrack.in/terms';
+const _playStoreUrl = 'https://play.google.com/store/apps/details?id=com.vidyatrack.vidyatrack';
+const _privacyUrl = 'https://vidyatrack-web.vercel.app/privacy';
+const _termsUrl = 'https://vidyatrack-web.vercel.app/terms';
 
 Future<void> _launch(String url) async {
   final uri = Uri.parse(url);

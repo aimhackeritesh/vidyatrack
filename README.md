@@ -74,6 +74,17 @@ Demo school code `VDTRK2627DEMO01`, all demo accounts use password `Demo@1234` (
 
 ## Project docs
 
+**Start here if you're picking the project up:**
+- [HANDOVER.md](HANDOVER.md) — orientation: current state, access, architecture, known traps, what's next
+- [OPERATIONS.md](OPERATIONS.md) — runbook: deploy, rollback, DB apply, demo reset, releases, troubleshooting
+- [SETUP.md](SETUP.md) — full local development setup
+
+**History and status:**
 - [CHANGELOG.md](CHANGELOG.md) — what shipped, in what order, including bugs caught during live verification
 - [FEATURE_STATUS.md](FEATURE_STATUS.md) — per-screen/button status across every role
-- [V3-PLAN.md](V3-PLAN.md) — the plan behind the most recent feature set (fees, timetable, syllabus, super-admin)
+- [DEPLOYMENT-PLAN-V1.md](DEPLOYMENT-PLAN-V1.md) — how the live deployment was done, and what was deferred
+
+**Roadmap:**
+- [V4-PLAN.md](V4-PLAN.md) — next version: per-school configuration system, instant-demo access, owner console v2, Hindi
+- [V4-AGENT-BRIEF.md](V4-AGENT-BRIEF.md) — implementation brief for the V4 work
+- [V3-PLAN.md](V3-PLAN.md) · [V2-IMPROVEMENT-PLAN.md](V2-IMPROVEMENT-PLAN.md) — prior version specs (historical)

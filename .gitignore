@@ -34,3 +34,8 @@ redis_data/
 
 # Original PRD reference screenshots (not part of the codebase)
 WhatsApp Image*.jpeg
+
+# Android release signing — NEVER commit these
+**/key.properties
+**/*.jks
+**/*.keystore
